@@ -271,3 +271,16 @@ from business_layer.walks
 where is_valid_for_CS_analysis is true and 
 date(scheduled_at) between '2020-01-01' and current_date()
 group by 1
+
+
+____________________________________________________________ ****_________________________________________________________
+schedule queries
+
+7 e 8 :
+
+select  date(scheduled_at) as date, count(case when city in ('sao paulo', 'rio de janeiro') and status_CS="finished" then walk_id  end) / count(case when city in ('sao paulo', 'rio de janeiro')  then walk_id  end) as walks_sp, count(case when city not in ('sao paulo', 'rio de janeiro') and status_CS="finished" then walk_id  end) / count(case when city not in ('sao paulo', 'rio de janeiro')  then walk_id  end) as walks_others
+from business_layer.walks
+where is_valid_for_CS_analysis is true and 
+date(scheduled_at) between '2020-01-01' and current_date()
+group by 1
+order by 1
