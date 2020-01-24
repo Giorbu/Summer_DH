@@ -276,6 +276,104 @@ group by 1
 ____________________________________________________________ ****_________________________________________________________
 schedule queries
 
+6:
+
+
+with base as (
+  select
+    visitor_id,
+    user_id,
+    list_id,
+    date(event_at) as date,
+    event_at,
+    case when event_name in ('search', 'view_search') then 'search'
+    end as event_type,
+    ST_GEOGPOINT(longitude_search, latitude_search) as my_point
+  from `belka-dh.int_layer.events_info`
+  where 
+    event_name in ('search', 'view_search')
+    and date(event_at) between '2020-01-01' and current_date()
+    and checkin_date<current_date()
+),
+searches_base as (
+  select
+    sb.*,
+    nb.NAME_1 as state,
+    nb.NAME_2 as city,
+    nb.NAME_3 as neighborhood,
+    nb.geom
+  from
+    base sb, `strelka.diva_gis.neighborhoods_bra` nb
+  where
+    ST_DWITHIN(sb.my_point, ST_GeogFromGeoJSON(nb.geom), 0)
+    and event_type = 'search'
+),
+searches as (
+  select *
+  from searches_base
+  where (state = 'São Paulo' and city = 'São Paulo')
+    or (state = 'Rio de Janeiro' and city = 'Rio de Janeiro')
+  and user_id not in (select user_id from business_layer.hosts where is_active_host is true)
+),
+bookings as (
+  select
+    client_user_id as user_id,
+    list_id,
+    first_message_at,
+    date(first_message_at) as date
+  from `belka-dh.business_layer.bookings` 
+where first_message_at >= '2020-01-01'
+and has_converted is true
+and city in ('sao paulo', 'rio de janeiro')
+and checkin_date<current_date()
+),
+pet_sittings as (
+  select
+    client_user_id as user_id,
+    list_id,
+    created_at as first_message_at,
+    date(created_at) as date
+  from
+    `belka-dh.business_layer.pet_sitting` 
+where created_at >= '2020-01-01'
+and status in ('finished', 'confirmed')
+and city in ('sao paulo', 'rio de janeiro')
+),
+daycares as (
+  select
+    d.client_user_id as user_id,
+    l.list_id,
+    first_message_at,
+    date(first_message_at) as date
+  from
+    `belka-dh.business_layer.daycare` d
+  left join
+    business_layer.hosts l on l.user_id = d.host_user_id
+  where first_message_at >= '2020-01-01'
+  and status = 'finished'
+  and d.city in ('sao paulo', 'rio de janeiro')
+and date(checkin_scheduled_to)<current_date()
+), 
+
+all_clients as
+(
+select user_id, first_message_at, list_id from bookings
+UNION ALL
+select user_id, first_message_at, list_id  from pet_sittings
+UNION ALL
+select user_id, first_message_at, list_id  from daycares
+)
+  select 
+   s.date as date,
+  count(distinct ac.user_id)/count(distinct s.visitor_id) as fulfillment  
+  from searches s
+  left join all_clients ac
+    on s.user_id=ac.user_id 
+    --and s.list_id=ac.list_id 
+    and ac.first_message_at between s.event_at and timestamp_add(s.event_at, interval 5 day)
+    group by 1
+    order by 1
+
 7 e 8 :
 
 select  date(scheduled_at) as date, count(case when city in ('sao paulo', 'rio de janeiro') and status_CS="finished" then walk_id  end) / count(case when city in ('sao paulo', 'rio de janeiro')  then walk_id  end) as walks_sp, count(case when city not in ('sao paulo', 'rio de janeiro') and status_CS="finished" then walk_id  end) / count(case when city not in ('sao paulo', 'rio de janeiro')  then walk_id  end) as walks_others
