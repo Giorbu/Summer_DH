@@ -30,7 +30,7 @@ group by 1
 )
 select count(distinct client_user_id) as qty_new_client
 from first_date
-where first_use >='2020-01-01' 
+where first_use >='2020-02-01' 
 
 #OKR 2: 1598
 
