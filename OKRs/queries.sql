@@ -1,22 +1,22 @@
 #OKR 1: 2460
 
 with first_uses as
-(SELECT client_user_id, min(finished_at) as first_use 
+(SELECT client_user_id, min(coalesce(finished_at, started_at )) as first_use 
 FROM `belka-dh.business_layer.walks`
 where status = "finished"
 group by 1
 UNION ALL
-SELECT client_user_id, min(finished_at) as first_use
+SELECT client_user_id, min(coalesce(finished_at, started_at )) as first_use
 from business_layer.daycare
 where status = "finished"
 group by 1
 UNION ALL
-SELECT client_user_id, min(payment_verified_at) as first_use
+SELECT client_user_id, min(coalesce(payment_verified_at, started_at )) as first_use
 FROM business_layer.pet_sitting
 where status in ( "confirmed", "finished") 
 group by 1
 UNION ALL
-SELECT client_user_id, min(payment_verified_at) as first_use
+SELECT client_user_id, min(coalesce(payment_verified_at, cast(checkin_date as timestamp))) as first_use
 from business_layer.bookings
 where has_converted is true
 and country="bra"
@@ -29,7 +29,7 @@ group by 1
 )
 select count(distinct client_user_id) as qty_new_client
 from first_date
-where first_use >='2020-01-01' 
+where first_use >= "2020-01-01"
 
 #OKR 2: 1598
 
