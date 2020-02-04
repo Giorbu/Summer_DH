@@ -6,7 +6,7 @@ FROM `belka-dh.business_layer.walks`
 where status = "finished"
 group by 1
 UNION ALL
-SELECT client_user_id, min(coalesce(finished_at, started_at )) as first_use
+SELECT client_user_id, min(finished_at) as first_use
 from business_layer.daycare
 where status = "finished"
 group by 1
